@@ -18,7 +18,7 @@ through the lifetime of the app process. For example, in Django:
 ```python
 # In your site's settings.py
 
-from wake import Assets
+from wake_assets import Assets
 
 WAKE_ASSETS = Assets(mode='targets', cache=True)
 ```
