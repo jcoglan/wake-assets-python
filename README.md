@@ -33,7 +33,7 @@ The options are:
 
 #### At request time
 
-On each request, create a renderer from your `Assets` instance. This renderder
+On each request, create a renderer from your `Assets` instance. This renderer
 takes per-request tag creation settings.
 
 ```python
