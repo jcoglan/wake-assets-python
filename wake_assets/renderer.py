@@ -1,5 +1,6 @@
 import cgi
 import mimetypes
+import re
 
 class Renderer:
     CSS = 'css'
@@ -9,7 +10,7 @@ class Renderer:
     def __init__(self, assets, **options):
         self._assets = assets
         self._builds = options.get('builds', {})
-        self._hosts  = options.get('hosts', {})
+        self._hosts  = options.get('hosts', [])
         self._inline = options.get('inline', False)
 
     def include_css(self, *names, **options):
@@ -48,7 +49,12 @@ class Renderer:
 
     def urls_for(self, type, *names, **options):
         paths = map(self._assets.relative, self.paths_for(type, *names, **options))
-        if not 'hosts' in options: return paths
+        hosts = self._hosts
+
+        if not hosts: return paths
+
+        return map(lambda path: re.sub(r'/*$', '', hosts[path.__hash__() % len(hosts)]) + path,
+                   paths)
 
     def _base64_file(self, path):
         base64 = self._assets.read_file(path).encode('base64').replace('\n', '')
