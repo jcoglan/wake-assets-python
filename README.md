@@ -18,9 +18,15 @@ through the lifetime of the app process. For example, in Django:
 ```python
 # In your site's settings.py
 
+import os.path
 from wake_assets import Assets
 
-WAKE_ASSETS = Assets(mode='targets', cache=True)
+WAKE_ASSETS = Assets(
+    wake  = os.path.join(os.getcwd(), 'node_modules', '.bin', 'wake'),
+    root  = os.getcwd(),
+    mode  = 'targets',
+    cache = True,
+)
 ```
 
 The options are:
@@ -34,20 +40,46 @@ The options are:
 #### At request time
 
 On each request, create a renderer from your `Assets` instance. This renderer
-takes per-request tag creation settings.
+takes per-request tag creation settings and provides methods for generating
+HTML. In Django, you might do this using a middleware, and a context processor
+to add the renderer to the template context. Start by creating an app skeleton:
+
+```
+$ mkdir -p assets/templatetags
+$ touch assets/models.py assets/templatetags/__init__.py
+```
+
+Then add this to the app you just created:
 
 ```python
-config_path = os.path.join(os.getcwd(), 'package.json')
-asset_hosts = json.loads(open(config_path).read())['wake']['css']['hosts']
+# assets/__init__.py
 
-secure = request.is_secure
+import json
+import os
+from django.conf import settings
 
-assets = settings.WAKE_ASSETS.renderer(
-    builds = {'css': 'ssl' if secure else 'min'},
-    hosts  = asset_hosts['production']['https' if secure else 'http'],
-    inline = False,
-)
+CONFIG_PATH = os.path.join(os.getcwd(), 'package.json')
+ASSET_HOSTS = json.loads(open(CONFIG_PATH).read())['wake']['css']['hosts']
+
+class AssetsMiddleware:
+    def process_request(self, request):
+        request.assets = settings.WAKE_ASSETS.renderer(
+            builds = {
+                'css':        'ssl' if request.is_secure else 'min',
+                'javascript': 'min',
+                'binary':     'min',
+            },
+            hosts  = ASSET_HOSTS['production']['https' if request.is_secure else 'http'],
+            inline = False,
+        )
+
+def assets_context(request):
+    return {'assets': request.assets}
 ```
+
+Adding `assets.AssetsMiddleware` to `MIDDLEWARE_CLASSES` and
+`assets.assets_context` to `TEMPLATE_CONTEXT_PROCESSORS` will wire these into
+your stack.
 
 The options are:
 
@@ -79,6 +111,44 @@ You can pass the `inline` option to any of these to override the per-request
 ```python
 assets.include_js('scripts.js', inline=True)
 # => '<script type="text/javascript">alert("Hello, world!")</script>'
+```
+
+For Django, you should bind these to custom template tags. Add the following to
+`assets/templatetags/asset_tags.py`:
+
+```python
+# assets/templatetags/asset_tags.py
+
+from django import template
+from django.utils.safestring import mark_safe
+
+register = template.Library()
+
+@register.simple_tag(takes_context=True)
+def include_css(context, *names, **options):
+    assets = context['assets']
+    return mark_safe(assets.include_css(*names, **options))
+
+@register.simple_tag(takes_context=True)
+def include_image(context, *names, **options):
+    assets = context['assets']
+    return mark_safe(assets.include_image(*names, **options))
+
+@register.simple_tag(takes_context=True)
+def include_js(context, *names, **options):
+    assets = context['assets']
+    return mark_safe(assets.include_js(*names, **options))
+```
+
+Adding `assets` to `INSTALLED_APPS` will make these tags available in templates.
+Use them like this:
+
+```
+{% load asset_tags %}
+
+{% include_js 'scripts.js' %}
+
+{% include_image 'logo.png' inline=True %}
 ```
 
 
