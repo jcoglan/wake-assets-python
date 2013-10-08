@@ -55,6 +55,7 @@ class Assets:
         return '/' + os.path.relpath(path, self._root)
 
     def renderer(self, **options):
+        if not self._cache: self.clear_cache()
         return Renderer(self, **options)
 
     def _find_paths_for(self, key):
