@@ -1,17 +1,9 @@
-from collections import defaultdict
 import json
 import os
 import os.path
 import subprocess
 
 from .renderer import Renderer
-
-
-class lazydict(defaultdict):
-    def __missing__(self, key):
-        value = self.default_factory(key)
-        self[key] = value
-        return value
 
 
 class InvalidReference(StandardError):
