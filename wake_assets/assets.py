@@ -30,7 +30,7 @@ class Assets:
         self.clear_cache()
 
     def clear_cache(self):
-        subprocess.call([self._wake, '--cache'])
+        if not self._cache: subprocess.call([self._wake, '--cache'])
 
         self._config   = None
         self._index    = None
