@@ -70,6 +70,7 @@ class Assets:
             raise InvalidReference('Could not find assets: group: %r, name: %r, build: %r' % (group, name, build))
 
         def resolve(path):
+            path     = os.path.join(self._pwd, path)
             basename = os.path.basename(path)
             dirname  = os.path.dirname(path)
             manifest = os.path.join(dirname, self.MANIFEST)
