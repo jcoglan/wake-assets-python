@@ -37,6 +37,19 @@ class Assets:
         self._manifest = {}
         self._paths    = {}
 
+    def generated_file_paths(self):
+        index = self._read_index()
+        paths = set([os.path.join(self._pwd, self.CACHE_FILE)])
+        for group in index.itervalues():
+            for bundles in group.itervalues():
+                for path in bundles['targets'].values():
+                    paths.add(path)
+                    manifest   = os.path.join(os.path.dirname(path), self.MANIFEST)
+                    source_map = path + '.map'
+                    for file in [manifest, source_map]:
+                        if os.path.exists(file): paths.add(file)
+        return map(self._resolve, paths)
+
     def paths_for(self, group, *names, **options):
         config = self._read_config()
 
@@ -69,14 +82,7 @@ class Assets:
         except KeyError:
             raise InvalidReference('Could not find assets: group: %r, name: %r, build: %r' % (group, name, build))
 
-        def resolve(path):
-            path     = os.path.join(self._pwd, path)
-            basename = os.path.basename(path)
-            dirname  = os.path.dirname(path)
-            manifest = os.path.join(dirname, self.MANIFEST)
-            return os.path.join(dirname, self._read_manifest(manifest).get(basename, basename))
-
-        return map(resolve, absolute_paths)
+        return map(self._resolve, absolute_paths)
 
     def _read_config(self):
         if self._config: return self._config
@@ -113,4 +119,11 @@ class Assets:
         paths = self._find_paths_for(key)
         if self._cache: self._paths[key] = paths
         return paths
+
+    def _resolve(self, path):
+        path     = os.path.join(self._pwd, path)
+        basename = os.path.basename(path)
+        dirname  = os.path.dirname(path)
+        manifest = os.path.join(dirname, self.MANIFEST)
+        return os.path.join(dirname, self._read_manifest(manifest).get(basename, basename))
 
